@@ -49,4 +49,4 @@ def excel_file_formatting(file_to_format):
     wb.Save()
     wb.Close()
     Excel.Application.Quit()
-
+    Excel.Quit()

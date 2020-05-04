@@ -13,7 +13,6 @@ from dateutil.relativedelta import relativedelta
 CB = str(dt.date.today()-dt.timedelta(30))
 OB = str(dt.date.today()+relativedelta(months=-18))
 
-
 # In[ ]:
 
 
@@ -105,9 +104,9 @@ def data_processing(df_rec, df_adj, df_rei):
     df_adj = df_adj.sort_values(by='transaction_item_id')
     df_adj = df_adj.reset_index(drop=True)
 
-    # In[ ]:
+# In[ ]:
 
-    Max_diff, document_number = 10000, 1
+    Max_diff = 10000
     df_adj['tr_id'] = 0
     df_adj.tr_id = np.where(df_adj.transaction_item_id.diff(periods=1) <= Max_diff,
                             None,
