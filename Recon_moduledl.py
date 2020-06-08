@@ -21,16 +21,19 @@ for uid in pp.packadges_uids():
 
     print(f"\n\n new iter with uid = {uid}\n\n")
     client_folder, email_message = pp.package_received(FOLDERS_PATH, uid)
+# %%
+
     df_rec, df_adj, df_rei = pp.files_reading(FOLDERS_PATH, client_folder)
 
     print("===data_processing==")
-    df_rec, table = data_processing(df_rec, df_adj, df_rei)
+    files = data_processing(df_rec, df_adj, df_rei)
 
     print("===ExcelWriter==")
-    new_file_path = excel_writer(FOLDERS_PATH, client_folder, df_rec, table)
+    new_files_path = excel_writer(FOLDERS_PATH, client_folder, files)
 
     print("===Excelformattig==")
-    excel_file_formatting(str(new_file_path))
+    excel_file_formatting(str(new_files_path["xlsx"]))
 
+# %%
     print("===send_answer==")
-    pp.send_answer(email_message, new_file_path)
+    pp.send_answer(email_message, new_files_path["xlsx"])

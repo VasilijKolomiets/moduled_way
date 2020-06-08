@@ -4,10 +4,14 @@ Created on Thu Apr 30 11:47:58 2020
 
 @author: Vasil
 """
-import win32com.client
+import os
+import sys
+
+current_os_is_win = sys.platform in ['win32', 'cygwin'] and os.name == "nt"
+if current_os_is_win:
+    import win32com.client
 
 # In[]:
-
 
 def search_and_colorise(work_sheet, searched_texts_list, color_num=4):
     if type(searched_texts_list) is str:
@@ -18,10 +22,7 @@ def search_and_colorise(work_sheet, searched_texts_list, color_num=4):
 
 def excel_file_formatting(file_to_format):
 
-    import os
-    import sys
-    
-    if sys.platform not in ['win32', 'cygwin'] or os.name != "nt":
+    if not current_os_is_win:
         o_excel_file_formatting(file_to_format)
         return
     
@@ -59,7 +60,6 @@ def excel_file_formatting(file_to_format):
     Excel.Quit()
     
 
-
 # %%  24
 from pathlib import Path
 import pandas as pd
@@ -67,34 +67,7 @@ import numpy as np
 import re
 
 import openpyxl as opx
-#from openpyxl.styles import Color, PatternFill, Font, Border
-file_to_format = r"d:\_\test_r4.xlsx"
-
-
-# sys.platform  'win32' 'cygwin'
-# os.name  'nt'
-
-def o_col_letters_with_num(n):
-    # only to ZZ, not XFD
-    letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    assert n <= len(letters)*(len(letters)+1), f"{n} toooo large"
-    if n <= len(letters):
-        rez = letters[n-1]
-    else:
-        rez = "".join([letters[(n-1) // (len(letters)) - 1],
-                       letters[n % len(letters) - 1]])
-    return rez
-
-
-def o2_col_letters_with_num(n):
-    # from A to XFD
-    #  openpyxl.utils.cell.get_column_letter() !!
-    letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    from itertools import product
-    assert 0 < n <= 1024*16, f"{n} not fit to (0, 1024*16]"
-    rez = sum([["".join(el) for el in product(letters, repeat=i)] for i in (1,2,3)], [])
-
-    return rez[n-1]
+from openpyxl.styles import Color, PatternFill, Font, Border
 
 
 def o_search_and_colorise(work_sheet, searched_texts_list, color='EE1111'):
@@ -158,11 +131,9 @@ def o_excel_file_formatting(file_to_format):
                         indent=0)
             ws.column_dimensions[opx.utils.cell.get_column_letter(j)].width = size
     
-
     wrap_and_size(ws_rec, cols_, 9.71)
     ws_rec.column_dimensions["A"].width = 13.71
     ws_rec.row_dimensions[1].height = 30
-
 
     ws_pivot_adj = wb["Pivot_ADJ"]
     rows_, cols_ = ws_pivot_adj.max_row, ws_pivot_adj.max_column
@@ -191,5 +162,5 @@ def o_excel_file_formatting(file_to_format):
     ws_pivot_adj.column_dimensions["F"].width = 6.37    
     
     ws_pivot_adj.row_dimensions[1].height = 30    
-        
+
     o_save(wb, file_to_format)

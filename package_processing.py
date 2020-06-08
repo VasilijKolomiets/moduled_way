@@ -106,15 +106,16 @@ def get_attachments(email_message, folders_path):
     print(f"subject_decoded:: {subject}")
 
     # get Client name after string "Fwd:" if exists
-    if subject:  #TODO: Re: Fwd:
-        folder_to_write = (subject[4:] if subject[:4] == "Fwd:" else
-                           subject).strip().split()[0]
+    if subject:
+        subject = subject.replace("Re:", "")
+        subject = subject.replace("Fwd:", "")
+        folder_to_write = subject.strip().split()[0]
+    else:
+        folder_to_write = "was_no_subj_"
 
     # make new dir for clients files
-    if not folder_to_write:
-        folder_to_write = "_" + suffix_from_now()   # add date with secs
     folder_to_write = folders_path / folder_to_write
-    if folder_to_write.exists():
+    if folder_to_write.exists(): # add date with secs
         folder_to_write = folder_to_write.with_name(folder_to_write.name + suffix_from_now()) 
     folder_to_write.mkdir()
 
@@ -131,7 +132,7 @@ def get_attachments(email_message, folders_path):
         if bool(file_name):
             with open(folder_to_write / file_name, 'wb') as f:
                 f.write(part.get_payload(decode=True))
-                #TODO: files_counter  ==1 ?
+                #TODO: files_counter  == 1   ??
     #TODO: checkfiles_counter ...
     
     assert zipfile.is_zipfile(folder_to_write / file_name), f"{file_name} - not *.zip"
@@ -175,7 +176,7 @@ def get_attachments(email_message, folders_path):
         pass
     else:
         assert False, f"in {folder_to_write} is {number_files_in_folder} items"
-        #TODO: upwork this branch
+        # TODO: upwork this branch
     for item in folder_to_write.iterdir():
         if item.is_file():
             item.rename(item.parent / ("_" + item.name))
