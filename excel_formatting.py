@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Apr 30 11:47:58 2020
+Created on Thu Apr 30 11:47:58 2020.
 
 @author: Vasil
 """
@@ -25,7 +24,7 @@ def excel_file_formatting(file_to_format):
     if not current_os_is_win:
         o_excel_file_formatting(file_to_format)
         return
-    
+
     Excel = win32com.client.DispatchEx("Excel.Application")
     wb = Excel.Workbooks.Open(file_to_format)
     ws_rec = wb.Worksheets("Sheet01")
@@ -58,7 +57,7 @@ def excel_file_formatting(file_to_format):
     wb.Close()
     Excel.Application.Quit()
     Excel.Quit()
-    
+
 
 # %%  24
 from pathlib import Path
@@ -104,9 +103,9 @@ def o_save(wb, file_xl):
 
 
 def o_excel_file_formatting(file_to_format):
-    
+
     fill_color = "CCFFFF"
-    
+
     wb = o_load(file_to_format)
     ws_rec = wb["Sheet01"]
     # ws_rec.Range("B2").Select()
@@ -130,7 +129,7 @@ def o_excel_file_formatting(file_to_format):
                         shrink_to_fit=False,
                         indent=0)
             ws.column_dimensions[opx.utils.cell.get_column_letter(j)].width = size
-    
+
     wrap_and_size(ws_rec, cols_, 9.71)
     ws_rec.column_dimensions["A"].width = 13.71
     ws_rec.row_dimensions[1].height = 30
@@ -139,7 +138,7 @@ def o_excel_file_formatting(file_to_format):
     rows_, cols_ = ws_pivot_adj.max_row, ws_pivot_adj.max_column
     ws_pivot_adj.freeze_panes = ws_pivot_adj["D2"]
     o_search_and_colorise(ws_pivot_adj, ["Z__SELLABLE"])
-    
+
     #  ws_pivot_adj.Columns("D:E").NumberFormat = "# ##0"
     D = opx.utils.cell.column_index_from_string("D")
     E = opx.utils.cell.column_index_from_string("E")
@@ -150,7 +149,7 @@ def o_excel_file_formatting(file_to_format):
     # ws_pivot_adj.Range('A1:Z1').WrapText = True
     wrap_and_size(ws_pivot_adj, cols_, 13.14)
     '''
-    ws_pivot_adj.Columns('A:Z').AutoFit()        
+    ws_pivot_adj.Columns('A:Z').AutoFit()
     ws_pivot_adj.Columns('C:C').ColumnWidth = 11.57
     ws_pivot_adj.Rows("1:1").EntireRow.AutoFit()
     '''
@@ -159,8 +158,8 @@ def o_excel_file_formatting(file_to_format):
     ws_pivot_adj.column_dimensions["C"].width = 11.57
     ws_pivot_adj.column_dimensions["D"].width = 18.71
     ws_pivot_adj.column_dimensions["E"].width = 18.71
-    ws_pivot_adj.column_dimensions["F"].width = 6.37    
-    
-    ws_pivot_adj.row_dimensions[1].height = 30    
+    ws_pivot_adj.column_dimensions["F"].width = 6.37
+
+    ws_pivot_adj.row_dimensions[1].height = 30
 
     o_save(wb, file_to_format)

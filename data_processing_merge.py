@@ -114,7 +114,7 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
     df_work = df_adj[df_adj.tr_id != 0].copy()
     df_work['case'], df_work['case1'] = np.nan, np.nan
     if df_work.empty:
-        return {'df_rec': df_work, 'table': df_work, "df_adj_filtered": df_work}
+        return {'df_rec': None, 'table': None, "df_adj_filtered": None}
 
     df_work = (df_work.groupby(['tr_id'])
                # Применяем функцию для заполнения case
@@ -147,9 +147,9 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
                              fill_value=0
                              )
 
-    df_rec = df_rec.join(df_work, on='fnsku').fillna(0)
+    #  df_rec.join(df_work, on='fnsku').fillna(0)
     #  df_rec = pd.merge(df_rec, df_work, how='left', left_on='fnsku', right_index=True).fillna(0)
-    #  df_rec = pd.merge(df_rec, df_work, how='left', on='fnsku').fillna(0)
+    df_rec = pd.merge(df_rec, df_work, how='left', on='fnsku').fillna(0)
 
     checking_cases2 = ['F', 'N', 'O', '1', '2', 'D', 'G', 'I', 'K', ]    # '3', # '4',
     df_work = pd.pivot_table(df_adj[df_adj.reason.isin(checking_cases2)],
@@ -160,7 +160,7 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
                              fill_value=0
                              )
 
-    df_rec = df_rec.join(df_work, on='fnsku').fillna(0)
+    df_rec = pd.merge(df_rec, df_work, how='left', on='fnsku').fillna(0)
 
     df_rei = df_rei[["reason", "fnsku", 'quantity_reimbursed_total',
                      'quantity_reimbursed_inventory']]
@@ -180,7 +180,7 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
         fill_value=0,
     )
 
-    df_rec = df_rec.join(df_work,  on='fnsku').fillna(0)
+    df_rec = pd.merge(df_rec, df_work, how='left', on='fnsku').fillna(0)
 
     df_work = pd.pivot_table(df_rei,
                              values='quantity_reimbursed_inventory',
@@ -189,7 +189,7 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
                              fill_value=0
                              )
 
-    df_rec = df_rec.join(-df_work, on='fnsku').fillna(0)
+    df_rec = pd.merge(df_rec, -df_work, how='left', on='fnsku').fillna(0)
 
     df_work = df_adj.loc[(df_adj.disposition == 'WAREHOUSE_DAMAGED')
                          & df_adj.reason.isin(['M', 'F']),
@@ -206,7 +206,7 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
                              fill_value=0
                              )
 
-    df_rec = df_rec.join(-df_work, on='fnsku').fillna(0)
+    df_rec = pd.merge(df_rec, -df_work, how='left', on='fnsku').fillna(0)
 
     # берем только те диспозалы, что не могли реимбурсить
     df_work = df_adj[
@@ -230,7 +230,7 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
     )
 
     df_work = df_work.rename(columns={'D': '12_Dispsd_sellbl'})
-    df_rec = df_rec.join(df_work, on='fnsku').fillna(0)
+    df_rec = pd.merge(df_rec, df_work, how='left', on='fnsku').fillna(0)
 
     # нужно сверить tr.out + disposal of damaged
     # с реимбурсами за порчу.
@@ -249,12 +249,9 @@ def data_processing(df_rec, df_adj, df_rei, OB=None):
         index=['fnsku', 'disposition'],
         aggfunc=np.sum,
         fill_value=0
-    ).sort_index().reset_index().set_index('fnsku')
-
-    if not df_work.empty:
-        df_work = df_work.rename(columns={'D': 'Disp_reimbrsble'})
-        df_rec = df_rec.join(df_work, on='fnsku').fillna(0)
-        df_rec.reset_index().set_index(['fnsku', 'disposition'],  inplace=True)
+    )         # .sort_index().reset_index().set_index('fnsku')
+    df_work = df_work.rename(columns={'D': 'Disp_reimbrsble'})
+    df_rec = pd.merge(df_rec, df_work, how='left', on='fnsku').fillna(0)
 
     df_rec['O'] = df_rec.get('O', default=0)  # for if "O" not exists
 
