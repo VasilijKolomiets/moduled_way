@@ -3,6 +3,12 @@ Created on Thu Apr 30 11:47:58 2020.
 
 @author: Vasil
 """
+from openpyxl.styles import Color, PatternFill, Font, Border
+import openpyxl as opx
+import re
+import numpy as np
+import pandas as pd
+from pathlib import Path
 import os
 import sys
 
@@ -11,6 +17,7 @@ if current_os_is_win:
     import win32com.client
 
 # In[]:
+
 
 def search_and_colorise(work_sheet, searched_texts_list, color_num=4):
     if type(searched_texts_list) is str:
@@ -60,13 +67,6 @@ def excel_file_formatting(file_to_format):
 
 
 # %%  24
-from pathlib import Path
-import pandas as pd
-import numpy as np
-import re
-
-import openpyxl as opx
-from openpyxl.styles import Color, PatternFill, Font, Border
 
 
 def o_search_and_colorise(work_sheet, searched_texts_list, color='EE1111'):
@@ -81,16 +81,16 @@ def o_search_and_colorise(work_sheet, searched_texts_list, color='EE1111'):
         for j in range(1, cols_ + 1):
             print(work_sheet.cell(row=1, column=j).value)
             if work_sheet.cell(row=1, column=j).value:
-                if work_sheet.cell(row=1, column=j).value.find(searched)>=0:
+                if work_sheet.cell(row=1, column=j).value.find(searched) >= 0:
                     work_sheet.cell(row=1, column=j).fill = fill_color
 
 
 def o_load(file_xl):
-        import datetime
-        print(datetime.datetime.now())
-        wb = opx.load_workbook(file_xl)
-        print(datetime.datetime.now())
-        return wb
+    import datetime
+    print(datetime.datetime.now())
+    wb = opx.load_workbook(file_xl)
+    print(datetime.datetime.now())
+    return wb
 
 
 def o_save(wb, file_xl):
@@ -98,7 +98,7 @@ def o_save(wb, file_xl):
     print(datetime.datetime.now())
     wb.save(file_xl)
     print(datetime.datetime.now())
-    #wb.close()
+    # wb.close()
     return None
 
 
@@ -121,13 +121,13 @@ def o_excel_file_formatting(file_to_format):
     def wrap_and_size(ws, cols_, size):
         for j in range(1, cols_ + 1):
             ws.cell(row=1, column=j).alignment = \
-                    opx.styles.Alignment(
-                        horizontal='general',
-                        vertical='bottom',
-                        text_rotation=0,
-                        wrap_text=True,
-                        shrink_to_fit=False,
-                        indent=0)
+                opx.styles.Alignment(
+                horizontal='general',
+                vertical='bottom',
+                text_rotation=0,
+                wrap_text=True,
+                shrink_to_fit=False,
+                indent=0)
             ws.column_dimensions[opx.utils.cell.get_column_letter(j)].width = size
 
     wrap_and_size(ws_rec, cols_, 9.71)
@@ -142,7 +142,7 @@ def o_excel_file_formatting(file_to_format):
     #  ws_pivot_adj.Columns("D:E").NumberFormat = "# ##0"
     D = opx.utils.cell.column_index_from_string("D")
     E = opx.utils.cell.column_index_from_string("E")
-    for i in range(2,rows_+1):
+    for i in range(2, rows_+1):
         ws_pivot_adj.cell(row=i, column=D).number_format = '# ### ##0'
         ws_pivot_adj.cell(row=i, column=E).number_format = '# ### ##0'
     # ws_pivot_adj.Columns('G:Z').ColumnWidth = 13.14
@@ -163,3 +163,48 @@ def o_excel_file_formatting(file_to_format):
     ws_pivot_adj.row_dimensions[1].height = 30
 
     o_save(wb, file_to_format)
+
+
+def o_fee_xlx_formatting(file_to_format):
+
+    fill_color = "CCFFFF"
+
+    wb = o_load(file_to_format)
+    ws = wb["Sheet1"]
+
+    ws.freeze_panes = "I2"
+
+    for j in range(1, 16 + 1):
+        ws.cell(row=1, column=j).alignment = opx.styles.Alignment(
+            horizontal='center',
+            vertical='center',
+            text_rotation=0,
+            wrap_text=True,
+            shrink_to_fit=False,
+            indent=0)
+
+    ws.column_dimensions["A"].width = 11.0
+    ws.column_dimensions["B"].width = 21.0
+    ws.column_dimensions["C"].width = 1.0
+    ws.column_dimensions["D"].width = 12.9
+    ws.column_dimensions["E"].width = 7.71
+    ws.column_dimensions["F"].width = 6.37
+    ws.column_dimensions["G"].width = 12.3
+    ws.column_dimensions["H"].width = 18.0
+    ws.column_dimensions["I"].width = 8.71
+    ws.column_dimensions["J"].width = 8.71
+    ws.column_dimensions["K"].width = 8.71
+    ws.column_dimensions["L"].width = 10.0
+    ws.column_dimensions["M"].width = 7.0
+    ws.column_dimensions["N"].width = 7.0
+    ws.column_dimensions["O"].width = 80.0
+    ws.column_dimensions["P"].width = 12.8
+
+    ws.row_dimensions[1].height = 30
+    o_save(wb, file_to_format)
+
+
+#  =====
+if __name__ == "__main__":
+    file_to_format = r'D:\OneDrive\PyCodes\SHEDULER\Premier\Premier_FEE_to_upwork.xlsx'
+    o_fee_xlx_formatting(file_to_format)

@@ -124,7 +124,7 @@ def get_attachments(email_message, folders_path) -> str:
 
     # saving attachements to the folder
     file_name = ""   # for no zip attached
-    for part in email_message.walk():
+    for part in email_message.walk():     # only first attachement # !!!
         if part.get_content_maintype() == 'multipart':
             continue
         if part.get('Content-Disposition') is None:
@@ -136,6 +136,8 @@ def get_attachments(email_message, folders_path) -> str:
             with open(folder_to_write / file_name, 'wb') as f:
                 f.write(part.get_payload(decode=True))
                 # TODO: files_counter  == 1   ??
+        break   # only first attachement # !!!
+
     # TODO: checkfiles_counter ...
 
     # assert zipfile.is_zipfile(folder_to_write / file_name), f"{file_name} - not *.zip"
@@ -146,7 +148,6 @@ def get_attachments(email_message, folders_path) -> str:
     with ZipFile(folder_to_write / file_name) as zip_file:
         if zip_file.testzip():
             return f"{file_name} - brocken *.zip"
-
         zip_file.extractall(folder_to_write)
 
     (folder_to_write / file_name).unlink()    # zip_file deleting
@@ -193,6 +194,8 @@ def get_attachments(email_message, folders_path) -> str:
         for item in folder_to_write.iterdir():
             if item.is_file():
                 item.rename(item.parent / ("_" + item.name))
+            else:
+                return 'not three files in ZIP. Folder(s) exists... '
         return folder_to_write.name
     else:
         return f"in {folder_to_write} is {number_files_in_folder} items. not three files in ZIP"
@@ -555,7 +558,7 @@ def rename_df_columns(df_):
 
 def file_names_reader(folders_path: Path,
                       client_folder: str,
-                      separators: str = " _",
+                      separators: str = " _-",
                       patterns: list = R_A_R_) -> dict:
     import re
     """

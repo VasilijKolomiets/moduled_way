@@ -41,7 +41,7 @@ def main():
     import datetime
 
     with open("senders.txt", "r") as senders_file:
-        senders = [sender.strip() for sender in senders_file.read().splitlines()] 
+        senders = [sender.strip() for sender in senders_file.read().splitlines()]
 
     for sender in senders:
         for uid in pp.packadges_uids(sender=sender):

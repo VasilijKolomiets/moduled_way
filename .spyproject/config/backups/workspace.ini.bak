@@ -6,5 +6,5 @@ save_non_project_files = False
 
 [main]
 version = 0.2.0
-recent_files = ['Recon_moduled.py', 'excel_formatting.py', 'package_processing.py', '..\\..\\Soft\\Recon5_3_formattimg.py', 'data_processing.py', 'data_processing_merge.py', 'C:\\Users\\Vasil\\anaconda3\\envs\\Amazoner\\lib\\site-packages\\pandas\\core\\internals\\managers.py']
+recent_files = ['Recon_moduled.py', 'excel_formatting.py', 'package_processing.py', '..\\..\\Soft\\Recon5_3_formattimg.py', 'data_processing.py', 'data_processing_merge.py']
 
