@@ -11,12 +11,13 @@ import sys
 import datetime as dt
 from pathlib import Path
 
+import shutil
+
 
 # In[ ]
-R_A_R_ = ["rec", "adj", "rei"]
 imap_url = 'imap.gmail.com'
 user = 'vasilij.kolomiets@gmail.com'
-password = "father1234#"  # os.environ['ADMIN_GMAIL_PASSWORD']
+password = "idngzealwrlycvvf"  # os.environ['ADMIN_GMAIL_PASSWORD']
 '''
 imap_url = 'outlook.office365.com'
 user = 'vasilij.kolomiets@outlook.com'
@@ -31,6 +32,16 @@ imap = None
 def suffix_from_now():
     """Get Year-month-day-time as a string without separators."""
     return dt.datetime.now().strftime("_%y%m%d_%H%M%S")
+
+
+def create_folder(folders_path, folder_to_create):
+    """Check if exist folder = rename and create filder."""
+    folder_to_write = folders_path / folder_to_create
+    if folder_to_write.exists():  # add date with secs
+        folder_to_write = folder_to_write.with_name(folder_to_write.name + suffix_from_now())
+    folder_to_write.mkdir(mode=0o777, parents=True)
+
+    return folder_to_write
 
 
 def files_moveup_from(folder_path):
@@ -90,16 +101,15 @@ def searched_emails_uids(search_param_str, imap):
     return data[0].split()
 
 
-def get_attachments(email_message, folders_path) -> str:
+def get_attachments(email_message, folders_path) -> tuple:
     """Get 'email_message' attachments to the folder 'folders_path'."""
-    from zipfile import ZipFile
-    import zipfile
-    import shutil
+    import shutil      # !!!  not used
+    from email.header import decode_header
 
     folder_to_write = ""
 
     # decoding and glueing the real Subject (if not-ANSI server)
-    subject = email.header.decode_header(email_message.get('Subject'))
+    subject = decode_header(email_message.get('Subject'))
 
     def glue(decoded_header: tuple):
         header, coding = decoded_header[0], decoded_header[1]
@@ -111,49 +121,61 @@ def get_attachments(email_message, folders_path) -> str:
     # get Client name after string "Fwd:" if exists %%%
     subject = subject.replace("Re:", "")
     subject = subject.replace("Fwd:", "")
-    if subject:
-        folder_to_write = subject.strip().split()[0]
-    else:
-        folder_to_write = "was_no_subj_"
+
+    folder_to_create = subject.strip().split()[0] if subject else "was_no_subj"
 
     # make new dir for clients files
-    folder_to_write = folders_path / folder_to_write
-    if folder_to_write.exists():  # add date with secs
-        folder_to_write = folder_to_write.with_name(folder_to_write.name + suffix_from_now())
-    folder_to_write.mkdir()
+    folder_to_write = create_folder(folders_path, folder_to_create)
 
+    # TODO: process situation when email  has no attachement (only link or )
+    file_name = 'was_no_attachements'
     # saving attachements to the folder
-    file_name = ""   # for no zip attached
     for part in email_message.walk():     # only first attachement # !!!
         if part.get_content_maintype() == 'multipart':
             continue
         if part.get('Content-Disposition') is None:
             continue
         print(part.get_content_type())
-        file_name = part.get_filename()
+        filename = part.get_filename()
+        file_name, charset = decode_header(filename)[0]
+        if charset:
+            file_name = file_name.decode(charset)
         print(f"fileName:: {file_name}")
         if bool(file_name):
             with open(folder_to_write / file_name, 'wb') as f:
                 f.write(part.get_payload(decode=True))
                 # TODO: files_counter  == 1   ??
-        break   # only first attachement # !!!
-
+                break   # only first attachement # !!!
     # TODO: checkfiles_counter ...
+    return (folder_to_write, file_name)
 
-    # assert zipfile.is_zipfile(folder_to_write / file_name), f"{file_name} - not *.zip"
-    # 'not ZIP file attached', 'not three files in ZIP'
+
+def uzip_nd_check(folder_to_write, file_name):
+    from zipfile import ZipFile
+    import zipfile
+
+    dict_to_return = {
+        "exit_is_ok": False,
+        "exit_message": "",
+        "folder": "",
+    }
+    #  file_name = ""   # for no zip attached
+
     if not zipfile.is_zipfile(folder_to_write / file_name):
-        return 'not ZIP file attached'
-
+        dict_to_return["exit_message"] = 'not ZIP file attached'
+        return dict_to_return
+    # here is ZIP only )
     with ZipFile(folder_to_write / file_name) as zip_file:
         if zip_file.testzip():
-            return f"{file_name} - brocken *.zip"
-        zip_file.extractall(folder_to_write)
+            dict_to_return["exit_message"] = f"{file_name} - brocken *.zip"
+            return dict_to_return
+        else:
+            zip_file.extractall(folder_to_write)
 
     (folder_to_write / file_name).unlink()    # zip_file deleting
 
+    # here we have unpacked files from *.zip
     items_in_folder = [file for file in folder_to_write.iterdir()]
-
     # if zip has another - zips - unzips them and remove zips
     for item in items_in_folder:
         if zipfile.is_zipfile(item):
@@ -161,6 +183,7 @@ def get_attachments(email_message, folders_path) -> str:
                 zip_file.extractall(folder_to_write)
             item.unlink()    # zip_file deleting
 
+    items_in_folder = [file for file in folder_to_write.iterdir()]
     number_files_in_folder = len(items_in_folder)
 
     if number_files_in_folder == 1:
@@ -169,44 +192,142 @@ def get_attachments(email_message, folders_path) -> str:
             files_moveup_from(items_in_folder[0])
             items_in_folder = [file for file in folder_to_write.iterdir()]
             number_files_in_folder = len(items_in_folder)
-        else:
-            return f"in {folder_to_write} is 1 item. not three files in ZIP"
+            if number_files_in_folder < 2:
+                shutil.rmtree(folder_to_write)
+                dict_to_return["exit_message"] = f"Folder {folder_to_write} has less than 2 files from ZIP"
+                return dict_to_return
 
-    if number_files_in_folder == 1:
-        # TODO: add before returns  -  unlink folder !!!!
-        # shutil.rmtree(folder_to_write)
-        return f"in {folder_to_write} is 1 item. not three files in ZIP"
+    # FEE maybe 1 *.txt + 1 *.csv
+    if (number_files_in_folder == 2) and all(
+            [f.suffix.lower() in {'.csv', '.txt'} for f in items_in_folder]):
+        dict_to_return["exit_message"] = f"in {folder_to_write} is {number_files_in_folder} files."
+        dict_to_return["folder"] = folder_to_write
+        dict_to_return["exit_is_ok"] = True
+        return dict_to_return
 
-    elif number_files_in_folder == 2:  # zip from MacOs
+    elif number_files_in_folder == 2:  # Snapshots zip from MacOs maybe
         for el in items_in_folder:
             if el.is_dir():
                 if el.name.find("__MACOSX") >= 0:
-                    for d in el.iterdir():
+                    for d in el.iterdir():      # shutil.rmtree(folder_to_write)
                         [f.unlink() for f in d.iterdir()]
                         d.rmdir()
                     el.rmdir()
                 else:
                     files_moveup_from(el)
             else:
-                return f"2 items only {el}. not three files in ZIP"
+                dict_to_return["exit_message"] = f"2 items only in {el}."
+                return dict_to_return
+        # here we are if MacOS and 3 csv files
+        mac_files = set(folder_to_write.iterdir())
+        mac_files_csv = set(f for f in mac_files if f.suffix.lower() == '.csv')
+        mac_files_not_csv = mac_files - mac_files_csv
+        if len(mac_files_csv) < 2:
+            dict_to_return["exit_message"] = f"in {folder_to_write} is {number_files_in_folder} files."
+            dict_to_return["folder"] = folder_to_write
+            return dict_to_return
 
-    elif number_files_in_folder == 3:
+        [f.unlink() for f in mac_files_not_csv]
+        dict_to_return["exit_message"] = f"in {folder_to_write} is {number_files_in_folder} files."
+        dict_to_return["folder"] = folder_to_write
+        dict_to_return["exit_is_ok"] = True
+        return dict_to_return
+
+    else:
         for item in folder_to_write.iterdir():
             if item.is_file():
                 item.rename(item.parent / ("_" + item.name))
             else:
-                return 'not three files in ZIP. Folder(s) exists... '
-        return folder_to_write.name
-    else:
-        return f"in {folder_to_write} is {number_files_in_folder} items. not three files in ZIP"
+                dict_to_return["exit_message"] = 'not only files were in ZIP. Folder(s) exists... '
+                # TODO: shutil !!!
+                return dict_to_return
+        else:
+            dict_to_return["exit_message"] = f"in {folder_to_write} is {number_files_in_folder} files."
+            dict_to_return["folder"] = folder_to_write
+            dict_to_return["exit_is_ok"] = True
+            return dict_to_return
+    assert False, "oooops"
 
 
+# In[ ]:
+
+
+def task_type_detect(in_response: dict):
+    """Detect task tipe by files name analise.
+
+    1) three *.csv files with adj_ & rec_ & rei_ in names => type "Snapshot"
+    2) any quantity files with *.txt extension + only one file with *.csv - extension => type "Fee"
+
+    Args_:
+        response (dict): [description]
+    """
+    from collections import Counter
+
+    my_response = {         # dict_to_return
+        "exit_is_ok": False,
+        "exit_message": "",
+        "folder": "",
+    }
+    my_response.update({"task_type": ""})
+
+    my_response["folder"] = in_response["folder"]
+
+    suffix_count = Counter(file.suffix for file in in_response["folder"].iterdir())
+    if set(suffix_count) <= {".csv", ".txt"}:
+        if (suffix_count[".txt"] == 0) and sum(suffix_count.values()) in [3, 4]:  # Snapshots-like
+            my_response["exit_is_ok"] = True
+            my_response["task_type"] = "Snapshots"
+        elif (suffix_count[".csv"] == 1) & (suffix_count[".txt"] > 0):  # Fee-like
+            my_response["exit_is_ok"] = True
+            my_response["task_type"] = "FEE"
+        else:
+            file_names = (file.name for file in in_response["folder"].iterdir())
+            out_message = f"wrong files set: {file_names}. Can't detect task type..."
+            my_response["exit_message"] = out_message   # wrong set of suffixes
+    else:  # wrong suffixes - not only .csv | .txt
+        my_response["exit_message"] = "files extension not in {'.csv', '.txt'}"
+
+    return my_response
+
+
+def package_received(folders_path, email_message):
+    """Get ayyachments from email and unzip it in created folder. """
+    my_response = {         # dict_to_return
+        "exit_is_ok": False,
+        "exit_message": "",
+        "folder": "",
+    }
+    #  zip_file_name  -> zips_list
+    new_folder_with_work, zip_file_name = get_attachments(email_message, folders_path)
+
+    if zip_file_name == 'was_no_attachements':
+        my_response["exit_is_ok"] = False
+        my_response["exit_message"] = 'was_no_attachements'
+        return my_response
+
+    response = resp_unzip = uzip_nd_check(new_folder_with_work, zip_file_name)
+    if response["exit_is_ok"]:
+        response = task_type_detect(resp_unzip)
+        # create subfolder according task type and move received files in it.
+        path_to = create_folder(folders_path,
+                                response["task_type"] + "/" + response["folder"].name,
+                                )
+        path_to.rmdir()
+        # removing folder to just created subfolder. Works only on same drive !!!
+        response["folder"] = new_folder_with_work.rename(path_to)   # i.e.  = path_to
+
+    return response
+
+
+# In[ ]:
 def get_email(uid):
     """Extract emails from byte array."""
     is_ok, data = imap.uid('fetch', uid, '(RFC822)')
     assert is_ok == "OK", f"Cant fetch {uid}"
-    # raw mail (dara) converting
-    return email.message_from_bytes(data[0][1])
+    # raw mail (data) returning
+    email_message = email.message_from_bytes(data[0][1])
+    print(f"{uid}:: {get_body(email_message).decode('latin1')}\n")   # 'utf-8'
+    return email_message
 
 
 def imap_in(user, password, email_folder="INBOX"):
@@ -229,13 +350,6 @@ def packadges_uids(sender='ychudnovs@gmail.com', email_folder="INBOX"):
     print(f'\n\n-----{sender}-------\n\n')
     picked_uids = searched_emails_uids(f'(FROM "{sender}" UNSEEN)', imap)
     return picked_uids
-
-
-def package_received(folders_path, uid):
-    email_message = get_email(uid)
-    new_folder_with_work = get_attachments(email_message, folders_path)
-    print(f"{uid}:: {get_body(email_message)}\n")
-    return new_folder_with_work, email_message  # organization_dir
 
 
 def _send_answer(original, file_to_attach, body_text="Macros reply", copy_to=[]):
@@ -292,9 +406,7 @@ def _send_answer(original, file_to_attach, body_text="Macros reply", copy_to=[])
     part = MIMEBase('application', 'octet-stream')
     with open(file_to_attach, 'rb') as attachment:
         part.set_payload(attachment.read())
-    part.add_header('Content-Disposition',
-                    'attachment',
-                    filename=file_name)
+    part.add_header('Content-Disposition', 'attachment', filename=file_name)
     email.encoders.encode_base64(part)
     new.attach(part)
 
@@ -372,7 +484,7 @@ def __send_answer(original, file_to_attach, body_text="Macros reply", cc_addrs: 
         s.send_message(new)
 
 
-def send_answer(original, file_to_attach, body_text="Macros reply", cc_addrs: list = []):
+def send_answer(original, file_to_attach: Path, body_text="Macros reply", cc_addrs: list = []):
     # https://stackoverflow.com/questions/2182196/how-do-i-reply-to-an-email-using-the-python-imaplib-and-include-the-original-mes
 
     import smtplib
@@ -402,7 +514,9 @@ def send_answer(original, file_to_attach, body_text="Macros reply", cc_addrs: li
     #  Then attach the file:  file_to_attach
     file_name = file_to_attach.name
     part = MIMEBase('application', 'octet-stream')
-    with open(file_to_attach, 'rb') as attachment:
+
+    #  with file_to_attach.open(mode='r') as attachment:
+    with open(str(file_to_attach), 'rb') as attachment:
         part.set_payload(attachment.read())
     email.encoders.encode_base64(part)
     part.add_header('Content-Disposition', 'attachment', filename=file_name)
@@ -547,68 +661,3 @@ def send_mail_with_attach(
         s.login(user, password)  # Authentication  # "Password_of_the_sender"
         s.set_debuglevel(False)
         s.send_message(msg)
-
-
-# In[ ]:
-def rename_df_columns(df_):
-    """Rename the df columns  by replacing character "-" with "_" for avoid syntax problems."""
-    dict_ = {x: x.replace("-", "_") for x in df_.columns}
-    df_.rename(columns=dict_, inplace=True)
-
-
-def file_names_reader(folders_path: Path,
-                      client_folder: str,
-                      separators: str = " _-",
-                      patterns: list = R_A_R_) -> dict:
-    import re
-    """
-    files searching in specified directory
-    - client_folder-
-    with prefix
-    - folders_path -
-    according patterns in parameter
-    - patterns -
-    """
-    wrk_dir = folders_path / client_folder
-    p_compiled = {p: re.compile(f'.*[{separators}]{p}.*\.csv') for p in patterns}
-    files = dict()
-    for kp, pc in p_compiled.items():
-        files[kp] = [f for f in wrk_dir.iterdir()
-                     if f.is_file() and pc.search(f.name.lower())]
-        if len(files[kp]) > 1:
-            raise Exception(f'несколько файлов с подстрокой {kp}')
-        if len(files[kp]) == 0:
-            raise Exception(f'неn файлов с подстрокой {kp}')
-
-    return {key: file_names[0] for key, file_names in files.items()}
-
-
-def files_reading(folders_path, client_folder):
-
-    separator = ","  # source file field separators: '\t' = tab or "," = comma
-
-    #  !chardetect direct_adj_20285364484018375.csv
-    en_codings = ["latin1", "cp1252", "cp1251", "cp1250"]
-
-    files = file_names_reader(folders_path, client_folder)
-    pd_files = dict.fromkeys(files.keys())
-    readed = False
-    for en_coding in en_codings:
-        if readed:
-            break
-        try:
-            for key, file_name in files.items():
-                pd_files[key] = pd.read_csv(str(file_name),
-                                            error_bad_lines=False,
-                                            sep=separator,
-                                            encoding=en_coding,
-                                            )
-                rename_df_columns(pd_files[key])
-            readed = True
-        except ValueError as error:
-            print(error)
-
-    if not readed:
-        raise Exception(f'неизвестная кодировка. не из {en_codings}')
-
-    return pd_files["rec"], pd_files["adj"], pd_files["rei"]

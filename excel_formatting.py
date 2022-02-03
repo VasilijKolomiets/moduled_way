@@ -12,6 +12,16 @@ from pathlib import Path
 import os
 import sys
 
+import zipfile
+try:
+    import zlib
+    compression = zipfile.ZIP_DEFLATED
+except (ImportError, AttributeError):
+    compression = zipfile.ZIP_STORED
+
+
+from copy import copy, deepcopy
+
 current_os_is_win = sys.platform in ['win32', 'cygwin'] and os.name == "nt"
 if current_os_is_win:
     import win32com.client
@@ -27,16 +37,36 @@ def search_and_colorise(work_sheet, searched_texts_list, color_num=4):
 
 
 def excel_file_formatting(file_to_format):
+    """Format excell file for snapshot report.
+    (variant for module "win32com.client")
+    Parameters
+    ----------
+    file_to_format : str | Path
+        Path of the file to e formatted.
+
+    Returns
+    -------
+    None.
+
+    """
 
     if not current_os_is_win:
         o_excel_file_formatting(file_to_format)
         return
+
+    semi_lite_gray = 15
+    # lite_violet = 17
+    # lite_orange = 40
 
     Excel = win32com.client.DispatchEx("Excel.Application")
     wb = Excel.Workbooks.Open(file_to_format)
     ws_rec = wb.Worksheets("Sheet01")
 
     search_and_colorise(ws_rec, ("01_", '10_', '20_'))
+    search_and_colorise(ws_rec,
+                        ('10__lost_to_compare', '10__lost_check',
+                         '20__damaged_check', '20__damaged_to_compare'),
+                        color_num=semi_lite_gray)  # TODO: 21/11/11
 
     ws_rec.Rows('1:1').WrapText = True
     ws_rec.Columns('B:AZ').ColumnWidth = 9.71
@@ -102,9 +132,40 @@ def o_save(wb, file_xl):
     return None
 
 
+def o_header_wrap_and_size(ws, cols_, size):
+    '''
+    ws_rec.Rows('1:1').WrapText = True
+    ws_rec.Columns('B:AZ').ColumnWidth = 9.71
+    ws_rec.Rows("1:1").EntireRow.AutoFit()
+    '''
+    for j in range(1, cols_ + 1):
+        ws.cell(row=1, column=j).alignment = \
+            opx.styles.Alignment(
+            horizontal='center',  # 'general',
+            vertical='bottom',
+            text_rotation=0,
+            wrap_text=True,
+            shrink_to_fit=False,
+            indent=0)
+        ws.column_dimensions[opx.utils.cell.get_column_letter(j)].width = size
+
+
 def o_excel_file_formatting(file_to_format):
+    """Format excell file for snapshot report.
+    (variant for module "openpyxl")
+    Parameters
+    ----------
+    file_to_format : str | Path
+        Path of the file to e formatted.
+
+    Returns
+    -------
+    None.
+
+    """
 
     fill_color = "CCFFFF"
+    semi_lite_gray = "808080"
 
     wb = o_load(file_to_format)
     ws_rec = wb["Sheet01"]
@@ -113,24 +174,12 @@ def o_excel_file_formatting(file_to_format):
     ws_rec.freeze_panes = ws_rec["B2"]
     rows_, cols_ = ws_rec.max_row, ws_rec.max_column
     o_search_and_colorise(ws_rec, ("01_", '10_', '20_'), color=fill_color)
-    '''
-    ws_rec.Rows('1:1').WrapText = True
-    ws_rec.Columns('B:AZ').ColumnWidth = 9.71
-    ws_rec.Rows("1:1").EntireRow.AutoFit()
-    '''
-    def wrap_and_size(ws, cols_, size):
-        for j in range(1, cols_ + 1):
-            ws.cell(row=1, column=j).alignment = \
-                opx.styles.Alignment(
-                horizontal='general',
-                vertical='bottom',
-                text_rotation=0,
-                wrap_text=True,
-                shrink_to_fit=False,
-                indent=0)
-            ws.column_dimensions[opx.utils.cell.get_column_letter(j)].width = size
+    o_search_and_colorise(ws_rec,
+                          ('10__lost_to_compare', '10__lost_check',
+                           '20__damaged_check', '20__damaged_to_compare'),
+                          color=semi_lite_gray)  # TODO: 21/11/11
 
-    wrap_and_size(ws_rec, cols_, 9.71)
+    o_header_wrap_and_size(ws_rec, cols_, 9.71)
     ws_rec.column_dimensions["A"].width = 13.71
     ws_rec.row_dimensions[1].height = 30
 
@@ -147,7 +196,7 @@ def o_excel_file_formatting(file_to_format):
         ws_pivot_adj.cell(row=i, column=E).number_format = '# ### ##0'
     # ws_pivot_adj.Columns('G:Z').ColumnWidth = 13.14
     # ws_pivot_adj.Range('A1:Z1').WrapText = True
-    wrap_and_size(ws_pivot_adj, cols_, 13.14)
+    o_header_wrap_and_size(ws_pivot_adj, cols_, 13.14)
     '''
     ws_pivot_adj.Columns('A:Z').AutoFit()
     ws_pivot_adj.Columns('C:C').ColumnWidth = 11.57
@@ -163,48 +212,119 @@ def o_excel_file_formatting(file_to_format):
     ws_pivot_adj.row_dimensions[1].height = 30
 
     o_save(wb, file_to_format)
+    return
 
 
-def o_fee_xlx_formatting(file_to_format):
+def o_fee_excel_file_formatting(file_to_format):
 
     fill_color = "CCFFFF"
+    gray_color = "999999"
+    lite_gray_color = "cccccc"
+    semi_lite_gray = "808080"
 
     wb = o_load(file_to_format)
-    ws = wb["Sheet1"]
 
-    ws.freeze_panes = "I2"
+    ws = wb['fee_preview']
 
-    for j in range(1, 16 + 1):
-        ws.cell(row=1, column=j).alignment = opx.styles.Alignment(
-            horizontal='center',
-            vertical='center',
-            text_rotation=0,
-            wrap_text=True,
-            shrink_to_fit=False,
-            indent=0)
+    o_search_and_colorise(ws, ["FEE_assumed", "coincided"])
+
+    fee_sum_cols = [
+        "estimated_variable_closing_fee",
+        "estimated_order_handling_fee_per_order",
+        "estimated_pick_pack_fee_per_unit",
+        "estimated_weight_handling_fee_per_unit",
+        "expected_fulfillment_fee_per_unit",
+    ]
+    o_search_and_colorise(ws, fee_sum_cols, color=gray_color)
+
+    o_header_wrap_and_size(ws, 35, 8)
+    ws.freeze_panes = "E2"
 
     ws.column_dimensions["A"].width = 11.0
-    ws.column_dimensions["B"].width = 21.0
+    ws.column_dimensions["B"].width = 16.0
     ws.column_dimensions["C"].width = 1.0
-    ws.column_dimensions["D"].width = 12.9
-    ws.column_dimensions["E"].width = 7.71
-    ws.column_dimensions["F"].width = 6.37
-    ws.column_dimensions["G"].width = 12.3
-    ws.column_dimensions["H"].width = 18.0
+    ws.column_dimensions["D"].width = 80.0
+    ws.column_dimensions["E"].width = 17.86
+    ws.column_dimensions["F"].width = 8.71
+    ws.column_dimensions["G"].width = 1.0
+    ws.column_dimensions["H"].width = 7.0
     ws.column_dimensions["I"].width = 8.71
     ws.column_dimensions["J"].width = 8.71
     ws.column_dimensions["K"].width = 8.71
     ws.column_dimensions["L"].width = 10.0
     ws.column_dimensions["M"].width = 7.0
     ws.column_dimensions["N"].width = 7.0
-    ws.column_dimensions["O"].width = 80.0
+    ws.column_dimensions["O"].width = 7.0
     ws.column_dimensions["P"].width = 12.8
 
     ws.row_dimensions[1].height = 30
+
+# =============================================================================
+# #   fee differense sheet
+# =============================================================================
+    ws = wb['fee_diff']
+
+    o_search_and_colorise(ws, ["FEE_assumed", "coincided"])
+    o_search_and_colorise(ws, fee_sum_cols, color=lite_gray_color)
+
+    o_header_wrap_and_size(ws, 24, 8)
+    ws.freeze_panes = "E2"
+
+    ws.column_dimensions["K"].width = 20
+
+    ws.row_dimensions[1].height = 30
+
     o_save(wb, file_to_format)
+    return file_to_format
+
+
+def fee_excel_file_formatting(files_dict, compression=compression):
+
+    #  o_fee_excel_file_formatting(file_to_format
+    if not current_os_is_win:
+        file_formating = o_fee_excel_file_formatting
+        return
+
+    file_formating = o_fee_excel_file_formatting
+
+    xl_files_path_dict = {"old_rooles":  None,   "new_rooles":  None}
+
+    my_response = {             # dict_to_return
+        "exit_is_ok": False,
+        "exit_message": "",
+        "xlsx_files": {
+            'USA': copy(xl_files_path_dict),
+            # 'EU': copy(xl_files_path_dict),
+        },
+        'zip_path': None,
+    }
+
+    for country in files_dict.keys():   # TODO:  'file_formating' have to be func from 'country'
+        for rooles, file in files_dict[country].items():
+            my_response["xlsx_files"][country][rooles] = file_formating(file)
+
+    # collect all formatted files into one 'zip' file !!
+
+    parent_name = ''
+    for country in files_dict.keys():   # TODO:  'file_formating' have to be fun from 'country'
+        for rooles, file in files_dict[country].items():
+            if not parent_name:   # creating ZIP archive with  1-st file
+                parent = files_dict[country][rooles].parent
+                parent_name = files_dict[country][rooles].parent.name
+                zip_file = zipfile.ZipFile(parent / (parent_name + '.zip'),
+                                           mode='w', compression=compression)
+
+            zip_file.write(files_dict[country][rooles], arcname=files_dict[country][rooles].name)
+            # my_response["xlsx_files"][country][rooles] = file_formating(file)
+
+    zip_file.close()
+    zip_file_path = Path(str(zipfile.Path(zip_file)))
+    my_response['zip_path'] = zip_file_path  # zipfile.Path(zip_file, (parent_name + '.zip'))
+    my_response["exit_is_ok"] = True
+    return my_response
 
 
 #  =====
 if __name__ == "__main__":
     file_to_format = r'D:\OneDrive\PyCodes\SHEDULER\Premier\Premier_FEE_to_upwork.xlsx'
-    o_fee_xlx_formatting(file_to_format)
+    o_fee_excel_file_formatting(file_to_format)
