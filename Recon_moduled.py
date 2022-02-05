@@ -3,6 +3,11 @@ import set_path
 
 import pandas as pd
 from pathlib import Path
+
+import datetime
+import time
+
+
 import package_processing as pp
 from data_processing import (
     files_reading, data_processing, excel_writer,
@@ -15,26 +20,31 @@ from excel_formatting import (
 )
 
 # import scheduleo
-import time
 
 dir(set_path)
 
 
 # Решаем, чтоб в таблица выводились ВСЕ КОЛОНКИ: None -> No Restrictions
 pd.options.display.max_columns = None
+# TODO: rework params reading to ConfigParser() using.
+# =============================================================================
+# parser = configparser.ConfigParser()    # allow_no_value=True
+# parser.read("settings.ini")
+#
+# =============================================================================
 FOLDERS_PATH = Path(r"D:\_")
-JOCK_FILE = Path(r"D:\OD\OneDrive\PyCodes\SHEDULER\tenor_Mister_Bin.gif")
+JOCK_FILE = Path(
+    r"D:\OD\OneDrive\Projects\Chud_Amaz\Soft_in_dev\moduled_way OOP\utils\tenor_Mister_Bin.gif")
+
+boss_emails = ['vikolo@i.ua', 'Yu <ychudnovs@gmail.com>']
+
 
 # In[ ]:
 #
 
-# 'vikolo@i.ua'  'Yu <ychudnovs@gmail.com>'
-boss_emails = ['vikolo@i.ua', 'Yu <ychudnovs@gmail.com>']
-
 
 def main():
     """Calculate Amazon reports."""
-    import datetime
 
     with open("senders.txt", "r") as senders_file:    # list of registered file senders
         senders = [sender.strip() for sender in senders_file.read().splitlines()]
