@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['Recon_moduled.py', 'excel_formatting.py', 'package_processing.py', 'data_processing.py', '..\\FEE_USA_2021\\fee_USD_2021.py', '..\\FEE_USA_2021\\fee_calc_2106.py', 'set_path\\__init__.py']
+recent_files = ['Recon_moduled.py', 'excel_formatting.py', 'package_processing.py', 'data_processing.py', '..\\FEE_USA_2021\\fee_USD_2021.py', '..\\FEE_USA_2021\\fee_calc_2106.py', 'set_path\\__init__.py', '..\\..\\..\\..\\..\\..\\games\\anaconda\\envs\\amazoner\\lib\\pathlib.py']
 
 [main]
 version = 0.2.0
