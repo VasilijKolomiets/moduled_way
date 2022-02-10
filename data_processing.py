@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 # pd.options.mode.chained_assignment = None  # default='warn'
 
+import csv
+
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import pivottablejs
@@ -131,6 +133,13 @@ def check_repare_csv_header(file_name, en_coding='latin1'):
             f.writelines(lines)
 
 
+def find_delimiter(filename, delimiters=(',', '\t')):
+    sniffer = csv.Sniffer()
+    with open(filename) as fp:
+        delimiter = sniffer.sniff(fp.read(1024*64), delimiters=delimiters).delimiter
+    return delimiter
+
+
 def files_reading(path_to_files_folder, patterns: list = SNAPSHOTS_PATTERNS):   # 2022
 
     my_response = {             # dict_to_return
@@ -139,10 +148,8 @@ def files_reading(path_to_files_folder, patterns: list = SNAPSHOTS_PATTERNS):   
         "files": {},
     }
 
-    separator = ","  # source file field separators: '\t' = tab or "," = comma
-
     #  !chardetect direct_adj_20285364484018375.csv
-    en_codings = ["latin1", "cp1252", "cp1251", "cp1250", 'utf-8']
+    en_codings = ['utf-8', "latin1", "cp1252", "cp1251", "cp1250"]
 
     files = file_names_reader(path_to_files_folder, patterns=patterns)
     sep_files = dict.fromkeys(files.keys())
@@ -153,6 +160,8 @@ def files_reading(path_to_files_folder, patterns: list = SNAPSHOTS_PATTERNS):   
         try:
             for key, file_name in files.items():
                 check_repare_csv_header(file_name)
+                # separator:  '\t' = tab or "," = comma
+                separator = find_delimiter(file_name, delimiters=(',', '\t'))
                 sep_files[key] = pd.read_csv(str(file_name),
                                              # 2022 error_bad_lines=False,
                                              sep=separator,
@@ -866,6 +875,10 @@ def returned_not_added(in_data_folder=r"D:\_\BI\==data=="):
     RETURNED_NOT_ADDED = ["eve", "ret", "rei"]   # 2022
     path_to_files_folder = Path(in_data_folder)
     z = files_reading(path_to_files_folder, patterns=RETURNED_NOT_ADDED)
+
+    if not z['exit_is_ok']:
+        print(z['exit_message'], 'from  ==path_to_files_folder==')
+        return z
     #
     #
     #   events columns:
@@ -983,12 +996,14 @@ def returned_not_added(in_data_folder=r"D:\_\BI\==data=="):
     to_analize = df_returns_items_sum.loc[
         reimbursed_returns_index, :][
             (df_returns_items_sum.loc[reimbursed_returns_index, '09_returned_q']
-             > df_reimburses_items_sum.loc[reimbursed_returns_index, '10_reimbursed_q'])]
+             > df_reimburses_items_sum.loc[reimbursed_returns_index, '10_reimbursed_q']
+             )]
 
     to_del = df_returns_items_sum.loc[
         reimbursed_returns_index, :][
             (df_returns_items_sum.loc[reimbursed_returns_index, '09_returned_q']
-             <= df_reimburses_items_sum.loc[reimbursed_returns_index, '10_reimbursed_q'])]
+             <= df_reimburses_items_sum.loc[reimbursed_returns_index, '10_reimbursed_q']
+             )]
 
     for key, row in to_del.reset_index().iterrows():
         df_returns = df_returns.drop(index=df_returns[
@@ -1023,13 +1038,23 @@ def returned_not_added(in_data_folder=r"D:\_\BI\==data=="):
     # group date filling for 'events' / 'return'  - the same date without timezone
     df_returns.loc[:, '06_group_date'] = df_returns['06_date'].str[:10]
     df_events.loc[:, '06_group_date'] = df_events['06_date'].str[:10]
+    # for 'nothing to do' situation
+    if not df_reimbrs.empty and '06_group_date' not in df_reimbrs.columns:
+        df_reimbrs.loc[:, '06_group_date'] = None
 
-    df_result = pd.concat(
-        [df_returns[FINAL_COLUMNS],
-         df_reimbrs[FINAL_COLUMNS],
-         df_events[FINAL_COLUMNS],
-         ],
-        ignore_index=True).sort_values(by=SORT_COLUMNS)
+    if df_reimbrs.empty:
+        df_result = pd.concat(
+            [df_returns[FINAL_COLUMNS],
+             df_events[FINAL_COLUMNS],
+             ],
+            ignore_index=True).sort_values(by=SORT_COLUMNS)
+    else:
+        df_result = pd.concat(
+            [df_returns[FINAL_COLUMNS],
+             df_reimbrs[FINAL_COLUMNS],
+             df_events[FINAL_COLUMNS],
+             ],
+            ignore_index=True).sort_values(by=SORT_COLUMNS)
 
     return df_result
 
@@ -1049,7 +1074,7 @@ def returnless_refunds(in_data_folder=r"D:\_\BI\==data=="):
 
 if __name__ == "__main__":
     folder = Path(r'D:\_\BI')
-    client = '0610_ORNABI'
+    client = '0658'
     clients_folder = folder / client
     df_final = returned_not_added(in_data_folder=clients_folder)
 
