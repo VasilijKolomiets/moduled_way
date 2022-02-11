@@ -971,6 +971,7 @@ def returned_not_added(in_data_folder=r"D:\_\BI\==data=="):
     z['files']['eve'] = z['files']['eve'][z['files']['eve'].transaction_type == "CustomerReturns"]
 
     for key in z['files'].keys():
+        print(key)
         z['files'][key] = reshape(z['files'][key].copy(), df_shapings[key])
 
     df_events = z['files']['eve']
@@ -1074,7 +1075,7 @@ def returnless_refunds(in_data_folder=r"D:\_\BI\==data=="):
 
 if __name__ == "__main__":
     folder = Path(r'D:\_\BI')
-    client = '0658'
+    client = '0647_'
     clients_folder = folder / client
     df_final = returned_not_added(in_data_folder=clients_folder)
 
