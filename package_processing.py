@@ -17,7 +17,7 @@ import shutil
 # In[ ]
 imap_url = 'imap.gmail.com'
 user = 'vasilij.kolomiets@gmail.com'
-password = "idngzealwrlycvvf"  # os.environ['ADMIN_GMAIL_PASSWORD']
+password = "aggclkaseqdgfucg"  # os.environ['ADMIN_GMAIL_PASSWORD']
 '''
 imap_url = 'outlook.office365.com'
 user = 'vasilij.kolomiets@outlook.com'
